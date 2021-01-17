@@ -1,4 +1,5 @@
 mod endpoint;
+pub mod request;
 mod router;
 
 use endpoint::{DynEndpoint, Endpoint};
@@ -13,6 +14,9 @@ use std::{error::Error, fmt, io};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_stream::StreamExt;
 use tokio_util::codec::{Decoder, Encoder, Framed};
+
+use crate::request::Request as crateRequest;
+
 pub struct Server<State> {
     method_map: Arc<HashMap<&'static str, Box<DynEndpoint<State>>>>,
     state: State,
@@ -24,6 +28,13 @@ impl Server<()> {
         Self::with_state(())
     }
 }
+
+impl Default for Server<()> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<State> Server<State>
 where
     State: Clone + Send + Sync + 'static,
@@ -48,6 +59,7 @@ where
         loop {
             let (stream, _) = server.accept().await?;
             let method_map = self.method_map.clone();
+            let state = self.state.clone();
             tokio::spawn(async move {
                 let mut transport = Framed::new(stream, Http);
 
@@ -55,10 +67,12 @@ where
                     let mut response = Response::builder();
                     match request {
                         Ok(request) => {
-                            let path = request.uri().path();
+                            let crate_request =
+                                crateRequest::new(state.clone(), request, [].to_vec());
+                            let path = crate_request.req.uri().path();
                             let ep = method_map.get(path);
                             if let Some(ep) = ep {
-                                let body = ep.call(request).await;
+                                let body = ep.call(crate_request).await;
 
                                 let response = response.body(body).unwrap();
 
