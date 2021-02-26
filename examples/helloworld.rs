@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 // use tokio::sync::Mutex;
-use tokio_tide::request::Request;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Point {
@@ -26,12 +25,12 @@ async fn main() {
 
     app.at(
         "/helloworld",
-        |req: Request<Arc<HashMap<String, String>>>| async move {
-            let body_str = std::str::from_utf8(req.req.body()).unwrap();
+        |state: Arc<HashMap<String, String>>, req: http::Request<Vec<u8>>| async move {
+            let body_str = std::str::from_utf8(req.body()).unwrap();
             let p: Point = serde_json::from_str(body_str).unwrap();
-            println!("{:#?}", req.req.headers());
+            println!("{:#?}", req.headers());
             println!("{:?}", p);
-            println!("{:?}", req.state.get("Daniel"));
+            println!("{:?}", state.get("Daniel"));
             "hellowrold\n".to_string()
         },
     );
