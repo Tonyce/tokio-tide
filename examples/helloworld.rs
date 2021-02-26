@@ -1,4 +1,5 @@
 // use http::Request;
+use route_recognizer::{Match, Params, Router as MethodRouter};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -18,19 +19,43 @@ async fn main() {
     contacts.insert("Daniel".to_string(), "798-1364".to_string());
 
     let state = Arc::new(contacts);
-    let mut app = tokio_tide::Server::with_state(state);
+    let mut app = tokio_tide::server::Server::with_state(state);
     let addr = "127.0.0.1:8989"
         .parse()
         .expect("Unable to parse socket address");
 
-    app.at(
-        "/helloworld",
-        |state: Arc<HashMap<String, String>>, req: http::Request<Vec<u8>>| async move {
-            let body_str = std::str::from_utf8(req.body()).unwrap();
-            let p: Point = serde_json::from_str(body_str).unwrap();
-            println!("{:#?}", req.headers());
-            println!("{:?}", p);
-            println!("{:?}", state.get("Daniel"));
+    // app.at(
+    //     "/helloworld",
+    //     |state: Arc<HashMap<String, String>>, req: http::Request<Vec<u8>>| async move {
+    //         let body_str = std::str::from_utf8(req.body()).unwrap();
+    //         let p: Point = serde_json::from_str(body_str).unwrap();
+    //         println!("{:#?}", req.headers());
+    //         println!("{:?}", p);
+    //         println!("{:?}", state.get("Daniel"));
+    //         "hellowrold\n".to_string()
+    //     },
+    // );
+
+    app.route("/he/:n").get(
+        |state: Arc<HashMap<String, String>>,
+         _req: http::Request<Vec<u8>>,
+         route_params: Vec<Params>| async move {
+            //     // let body_str = std::str::from_utf8(req.body()).unwrap();
+            //     // let p: Point = serde_json::from_str(body_str).unwrap();
+            //     // println!("{:#?}", req.headers());
+            //     // println!("{:?}", p);
+            println!("{:?}", route_params);
+            "hellowrold\n".to_string()
+        },
+    );
+    app.route("/he").get(
+        |state: Arc<HashMap<String, String>>,
+         _req: http::Request<Vec<u8>>,
+         _route_params: Vec<Params>| async move {
+            //     // let body_str = std::str::from_utf8(req.body()).unwrap();
+            //     // let p: Point = serde_json::from_str(body_str).unwrap();
+            //     // println!("{:#?}", req.headers());
+            //     // println!("{:?}", p);
             "hellowrold\n".to_string()
         },
     );
