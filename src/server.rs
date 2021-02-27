@@ -1,6 +1,10 @@
-use crate::endpoint::{DynEndpoint, Endpoint};
+use crate::middleware::Next;
 use crate::route::Route;
 use crate::router::{Router, Selection};
+use crate::{
+    endpoint::{DynEndpoint, Endpoint},
+    middleware::Middleware,
+};
 
 use bytes::BytesMut;
 use futures::SinkExt;
@@ -17,6 +21,7 @@ pub struct Server<State> {
     router: Arc<Router<State>>,
     // method_map: Arc<HashMap<&'static str, Box<DynEndpoint<State>>>>,
     state: State,
+    middleware: Arc<Vec<Arc<dyn Middleware<State>>>>,
 }
 
 impl Server<()> {
@@ -39,25 +44,24 @@ where
     pub fn with_state(state: State) -> Self {
         Self {
             router: Arc::new(Router::new()),
-
-            // middleware: Arc::new(vec![
-            //     #[cfg(feature = "cookies")]
-            //     Arc::new(cookies::CookiesMiddleware::new()),
-            //     #[cfg(feature = "logger")]
-            //     Arc::new(log::LogMiddleware::new()),
-            // ]),
-            // method_map: Arc::new(HashMap::default()),
+            middleware: Arc::new(vec![
+                // #[cfg(feature = "cookies")]
+                // Arc::new(cookies::CookiesMiddleware::new()),
+                // #[cfg(feature = "logger")]
+                // Arc::new(log::LogMiddleware::new()),
+            ]),
             state,
         }
     }
+
     pub async fn listen(self, addr: &SocketAddr) -> Result<(), Box<dyn Error>> {
         let server = TcpListener::bind(addr).await?;
-        println!("Listening on: {}", addr);
         loop {
             let (stream, _) = server.accept().await?;
             // let method_map = self.router.method_map.clone();
             let state = self.state.clone();
             let router = self.router.clone();
+            let middleware = self.middleware.clone();
 
             tokio::spawn(async move {
                 let mut transport = Framed::new(stream, Http);
@@ -70,9 +74,17 @@ where
                             let method = request.method();
                             let Selection { endpoint, params } = router.route(path, method);
                             let route_params = vec![params];
-                            let body = endpoint.call(state.clone(), request, route_params).await;
 
-                            let response = response.body(body).unwrap();
+                            let next = Next {
+                                endpoint,
+                                next_middleware: &middleware,
+                            };
+
+                            let res = next.run(state.clone(), request, route_params).await;
+
+                            // let body = endpoint.call(state.clone(), request, route_params).await;
+
+                            let response = response.body(res).unwrap();
 
                             transport.send(response).await.unwrap();
                         }
@@ -83,13 +95,23 @@ where
         }
     }
 
-    pub fn at(&mut self, path: &'static str, ep: impl Endpoint<State>) {
-        // let m = Arc::get_mut(&mut self.method_map).unwrap();
-        // let mut map = self.method_map;
-        // m.entry(path).or_insert_with(|| Box::new(ep));
+    // pub fn at(&mut self, path: &'static str, ep: impl Endpoint<State>) {
+    // let m = Arc::get_mut(&mut self.method_map).unwrap();
+    // let mut map = self.method_map;
+    // m.entry(path).or_insert_with(|| Box::new(ep));
+    // }
+
+    pub fn with<M>(&mut self, middleware: M) -> &mut Self
+    where
+        M: Middleware<State>,
+    {
+        let m = Arc::get_mut(&mut self.middleware)
+            .expect("Registering middleware is not possible after the Server has started");
+        m.push(Arc::new(middleware));
+        self
     }
 
-    pub fn route<'a>(&'a mut self, path: &str) -> Route<'a, State> {
+    pub fn at<'a>(&'a mut self, path: &str) -> Route<'a, State> {
         let router = Arc::get_mut(&mut self.router)
             .expect("Registering routes is not possible after the Server has started");
         Route::new(router, path.to_owned())
