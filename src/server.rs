@@ -136,7 +136,7 @@ impl Encoder<Response<Vec<u8>>> for Http {
             BytesWrite(dst),
             "\
              HTTP/1.1 {}\r\n\
-             Server: Example\r\n\
+             Server: Tokio-Tide\r\n\
              Content-Length: {}\r\n\
              Date: {}\r\n\
              ",

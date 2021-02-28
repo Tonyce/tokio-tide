@@ -29,18 +29,13 @@ async fn main() {
         .expect("Unable to parse socket address");
 
     app.with(test_middleware);
-
     app.at("/he/:n").with(test_middleware_2).get(
         |_state: Arc<HashMap<String, String>>,
          _req: http::Request<Vec<u8>>,
          route_params: Vec<Params>| async move {
-            //     // let body_str = std::str::from_utf8(req.body()).unwrap();
-            //     // let p: Point = serde_json::from_str(body_str).unwrap();
-            //     // println!("{:#?}", req.headers());
-            //     // println!("{:?}", p);
             println!("{:?}", route_params);
             // "hellowrold\n".to_string()
-            let body: Vec<u8> = "hellowrold\n".to_owned().into_bytes();
+            let body = "hellowrold\n".to_owned().into_bytes();
             let response = http::Response::builder().status(http::StatusCode::NOT_FOUND);
             let response = response.header("key", "value");
             response.body(body).unwrap()
@@ -51,6 +46,10 @@ async fn main() {
         |_state: Arc<HashMap<String, String>>,
          req: http::Request<Vec<u8>>,
          _route_params: Vec<Params>| async move {
+            //     // let body_str = std::str::from_utf8(req.body()).unwrap();
+            //     // let p: Point = serde_json::from_str(body_str).unwrap();
+            //     // println!("{:#?}", req.headers());
+            //     // println!("{:?}", p);
             let data = req.extensions().get::<&str>();
             println!("{:?}", data);
             let body: Vec<u8> = "hellowrold\n".to_owned().into_bytes();
@@ -97,7 +96,7 @@ fn test_middleware_2<'a, State: Clone + Send + Sync + 'static>(
     next: Next<'a, State>,
 ) -> Pin<Box<dyn Future<Output = http::Response<Vec<u8>>> + Send + 'a>> {
     Box::pin(async {
-        println!("middleware2");
+        println!("middleware2 {}", request.method());
         let result = request.extensions_mut().insert("hello middleware2");
         next.run(state, request, route_params).await
         // if let Some(user) = request.state().find_user().await {
