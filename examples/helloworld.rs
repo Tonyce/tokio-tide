@@ -28,19 +28,9 @@ async fn main() {
         .parse()
         .expect("Unable to parse socket address");
 
-    // app.at(
-    //     "/helloworld",
-    //     |state: Arc<HashMap<String, String>>, req: http::Request<Vec<u8>>| async move {
-    //         let body_str = std::str::from_utf8(req.body()).unwrap();
-    //         let p: Point = serde_json::from_str(body_str).unwrap();
-    //         println!("{:#?}", req.headers());
-    //         println!("{:?}", p);
-    //         println!("{:?}", state.get("Daniel"));
-    //         "hellowrold\n".to_string()
-    //     },
-    // );
+    app.with(test_middleware);
 
-    app.with(test_middleware).at("/he/:n").get(
+    app.at("/he/:n").with(test_middleware_2).get(
         |_state: Arc<HashMap<String, String>>,
          _req: http::Request<Vec<u8>>,
          route_params: Vec<Params>| async move {
@@ -56,18 +46,19 @@ async fn main() {
             response.body(body).unwrap()
         },
     );
-    // app.with(test_middleware)
-    //     // .with(test_middleware_2)
-    //     .at("/he")
-    //     .get(
-    //         |_state: Arc<HashMap<String, String>>,
-    //          req: http::Request<Vec<u8>>,
-    //          _route_params: Vec<Params>| async move {
-    //             let data = req.extensions().get::<&str>();
-    //             println!("{:?}", data);
-    //             "hellowrold\n".to_string()
-    //         },
-    //     );
+
+    app.at("/he").get(
+        |_state: Arc<HashMap<String, String>>,
+         req: http::Request<Vec<u8>>,
+         _route_params: Vec<Params>| async move {
+            let data = req.extensions().get::<&str>();
+            println!("{:?}", data);
+            let body: Vec<u8> = "hellowrold\n".to_owned().into_bytes();
+            let response = http::Response::builder().status(http::StatusCode::NOT_FOUND);
+            let response = response.header("key", "value");
+            response.body(body).unwrap()
+        },
+    );
     println!("Listening on: {}", addr);
     app.listen(&addr).await.unwrap();
 }
@@ -99,25 +90,25 @@ fn test_middleware<'a, State: Clone + Send + Sync + 'static>(
     })
 }
 
-// fn test_middleware_2<'a, State: Clone + Send + Sync + 'static>(
-//     state: State,
-//     mut request: http::Request<Vec<u8>>,
-//     route_params: Vec<Params>,
-//     next: Next<'a, State>,
-// ) -> Pin<Box<dyn Future<Output = String> + Send + 'a>> {
-//     Box::pin(async {
-//         println!("middleware2");
-//         let result = request.extensions_mut().insert("hello middleware2");
-//         next.run(state, request, route_params).await
-//         // if let Some(user) = request.state().find_user().await {
-//         //     tide::log::trace!("user loaded", {user: user.name});
-//         //     request.set_ext(user);
-//         //     Ok(next.run(request).await)
-//         // // this middleware only needs to run before the endpoint, so
-//         // // it just passes through the result of Next
-//         // } else {
-//         //     // do not run endpoints, we could not find a user
-//         //     Ok(Response::new(StatusCode::Unauthorized))
-//         // }
-//     })
-// }
+fn test_middleware_2<'a, State: Clone + Send + Sync + 'static>(
+    state: State,
+    mut request: http::Request<Vec<u8>>,
+    route_params: Vec<Params>,
+    next: Next<'a, State>,
+) -> Pin<Box<dyn Future<Output = http::Response<Vec<u8>>> + Send + 'a>> {
+    Box::pin(async {
+        println!("middleware2");
+        let result = request.extensions_mut().insert("hello middleware2");
+        next.run(state, request, route_params).await
+        // if let Some(user) = request.state().find_user().await {
+        //     tide::log::trace!("user loaded", {user: user.name});
+        //     request.set_ext(user);
+        //     Ok(next.run(request).await)
+        // // this middleware only needs to run before the endpoint, so
+        // // it just passes through the result of Next
+        // } else {
+        //     // do not run endpoints, we could not find a user
+        //     Ok(Response::new(StatusCode::Unauthorized))
+        // }
+    })
+}
