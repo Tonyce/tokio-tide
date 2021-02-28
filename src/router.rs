@@ -5,7 +5,7 @@ use std::collections::HashMap;
 pub struct Router<State> {
     pub method_map: HashMap<http::Method, MethodRouter<Box<DynEndpoint<State>>>>,
     // method_map: String, // HashMap<http_types::Method, MethodRouter<Box<DynEndpoint<State>>>>,
-    all_method_router: String, // MethodRouter<Box<DynEndpoint<State>>>,
+    // all_method_router: String, // MethodRouter<Box<DynEndpoint<State>>>,
 }
 
 pub(crate) struct Selection<'a, State> {
@@ -17,7 +17,7 @@ impl<State: Clone + Send + Sync + 'static> Router<State> {
     pub fn new() -> Self {
         Router {
             method_map: HashMap::default(),
-            all_method_router: "state".to_string(),
+            // all_method_router: "state".to_string(),
         }
     }
 
@@ -71,8 +71,11 @@ async fn not_found_endpoint<State: Clone + Send + Sync + 'static>(
     _state: State,
     _req: http::Request<Vec<u8>>,
     _route_params: Vec<Params>,
-) -> String {
-    "Not Found".to_owned()
+) -> http::Response<Vec<u8>> {
+    // "Not Found".to_owned()
+    let response = http::Response::builder();
+    let response = response.status(http::StatusCode::NOT_FOUND);
+    response.body(vec![]).unwrap()
     // Ok(Response::new(StatusCode::NotFound))
 }
 
@@ -80,7 +83,10 @@ async fn method_not_allowed<State: Clone + Send + Sync + 'static>(
     _state: State,
     _req: http::Request<Vec<u8>>,
     _route_params: Vec<Params>,
-) -> String {
-    "Method Not Allowed".to_owned()
+) -> http::Response<Vec<u8>> {
+    // "Method Not Allowed".to_owned()
     // Ok(Response::new(StatusCode::NotFound))
+    let response = http::Response::builder();
+    let response = response.status(http::StatusCode::NOT_IMPLEMENTED);
+    response.body(vec![]).unwrap()
 }

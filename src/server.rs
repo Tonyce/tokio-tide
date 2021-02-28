@@ -67,7 +67,7 @@ where
                 let mut transport = Framed::new(stream, Http);
 
                 while let Some(request) = transport.next().await {
-                    let response = Response::builder();
+                    // let response = Response::builder();
                     match request {
                         Ok(request) => {
                             let path = request.uri().path();
@@ -80,11 +80,13 @@ where
                                 next_middleware: &middleware,
                             };
 
-                            let res = next.run(state.clone(), request, route_params).await;
+                            // let (status, headers, body) =
+                            let response = next.run(state.clone(), request, route_params).await;
 
-                            // let body = endpoint.call(state.clone(), request, route_params).await;
+                            // let res = endpoint.call(state.clone(), request, route_params).await;
+                            // let response = response.status(status);
 
-                            let response = response.body(res).unwrap();
+                            // let response = response.he(key, value).body(body).unwrap();
 
                             transport.send(response).await.unwrap();
                         }
@@ -122,10 +124,10 @@ struct Http;
 
 /// Implementation of encoding an HTTP response into a `BytesMut`, basically
 /// just writing out an HTTP/1.1 response.
-impl Encoder<Response<String>> for Http {
+impl Encoder<Response<Vec<u8>>> for Http {
     type Error = io::Error;
 
-    fn encode(&mut self, item: Response<String>, dst: &mut BytesMut) -> io::Result<()> {
+    fn encode(&mut self, item: Response<Vec<u8>>, dst: &mut BytesMut) -> io::Result<()> {
         use std::fmt::Write;
         use std::time::SystemTime;
 
@@ -152,7 +154,7 @@ impl Encoder<Response<String>> for Http {
         }
 
         dst.extend_from_slice(b"\r\n");
-        dst.extend_from_slice(item.body().as_bytes());
+        dst.extend_from_slice(item.body());
 
         return Ok(());
 

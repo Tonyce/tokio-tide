@@ -18,7 +18,7 @@ pub trait Middleware<State>: Send + Sync + 'static {
         request: http::Request<Vec<u8>>,
         route_params: Vec<Params>,
         next: Next<'_, State>,
-    ) -> String;
+    ) -> http::Response<Vec<u8>>;
 
     /// Set the middleware's name. By default it uses the type signature.
     fn name(&self) -> &str {
@@ -38,7 +38,7 @@ where
             http::Request<Vec<u8>>,
             Vec<Params>,
             Next<'a, State>,
-        ) -> Pin<Box<dyn Future<Output = String> + 'a + Send>>,
+        ) -> Pin<Box<dyn Future<Output = http::Response<Vec<u8>>> + 'a + Send>>,
 {
     async fn handle(
         &self,
@@ -46,7 +46,7 @@ where
         req: http::Request<Vec<u8>>,
         route_params: Vec<Params>,
         next: Next<'_, State>,
-    ) -> String {
+    ) -> http::Response<Vec<u8>> {
         (self)(state, req, route_params, next).await
     }
 }
@@ -63,7 +63,7 @@ impl<State: Clone + Send + Sync + 'static> Next<'_, State> {
         state: State,
         req: http::Request<Vec<u8>>,
         route_params: Vec<Params>,
-    ) -> String {
+    ) -> http::Response<Vec<u8>> {
         if let Some((current, next)) = self.next_middleware.split_first() {
             self.next_middleware = next;
             current.handle(state, req, route_params, self).await
