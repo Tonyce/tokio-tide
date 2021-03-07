@@ -37,7 +37,7 @@ async fn main() {
             // "hellowrold\n".to_string()
             let body = "hellowrold\n".to_owned().into_bytes();
             let response = http::Response::builder().status(http::StatusCode::NOT_FOUND);
-            let response = response.header("key", "value");
+            let response = response.header("key", "value").header("contacts", "value");
             response.body(body).unwrap()
         },
     );
